@@ -60,63 +60,66 @@ class Model(nn.Module):
         self.output_projection = nn.Linear(rnn_hidden_size, n_features)
         self.decoder_classification = nn.Linear(rnn_hidden_size, configs.n_classes)
 
-    def convert_to_delta(self, x_mark: torch.Tensor) -> torch.Tensor:
-        # Ensure x_mark is of shape [batch_size, n_steps, n_features]
-        batch_size, n_steps, n_features = x_mark.shape
-        
-        # Initialize delta tensor with the same shape as x_mark
-        delta = torch.zeros((batch_size, n_steps, n_features), device=x_mark.device)
-        
-        # Calculate deltas for each feature
-        # Use slicing to get the difference between current and previous timesteps
-        delta[:, 1:, :] = x_mark[:, 1:, :] - x_mark[:, :-1, :]
-        
-        # The first time step can be set to zero or left as is
-        # delta[:, 0, :] = 0  # Optional, already initialized to zero
+    def convert_to_delta(
+        self,
+        x_mark: torch.Tensor,
+        observed_mask: torch.Tensor,
+    ) -> torch.Tensor:
+        """Return time since the previous observation for every feature.
 
+        PyOmniTS masks use ``1`` for observed values.  GRU-D's recurrence is
+        feature-specific: when a feature was missing at the previous time
+        point, its elapsed time must include the previously accumulated gap.
+        """
+        delta = torch.zeros_like(x_mark)
+        time_gap = x_mark[:, 1:, :] - x_mark[:, :-1, :]
+        for step in range(1, x_mark.size(1)):
+            delta[:, step, :] = time_gap[:, step - 1, :] + (
+                1.0 - observed_mask[:, step - 1, :]
+            ) * delta[:, step - 1, :]
         return delta
 
     def calculate_empirical_mean(self, x: torch.Tensor, missing_mask: torch.Tensor) -> torch.Tensor:
-        # Ensure x is of shape [batch_size, n_steps, n_features]
-        # Ensure missing_mask is of the same shape and consists of binary values (0 or 1)
-        
-        # Invert the missing mask to get valid (observed) values
-        valid_mask = 1 - missing_mask  # 1 for observed values, 0 for missing values
-        
-        # Multiply x by the valid mask to zero out missing values
-        x_valid = x * valid_mask
-        
-        # Count the number of valid (observed) entries for each feature
-        count_valid = valid_mask.sum(dim=1)  # Shape: [batch_size, n_features]
-        
-        # Calculate empirical mean, avoiding division by zero
-        empirical_mean = x_valid.sum(dim=1) / count_valid
-        empirical_mean[count_valid == 0] = 0  # Handle cases where no valid values exist
+        """Calculate each sample's mean from observed entries only."""
+        observed_mask = missing_mask.to(dtype=x.dtype)
+        count_observed = observed_mask.sum(dim=1)
+        empirical_mean = (x * observed_mask).sum(dim=1) / count_observed.clamp_min(1)
+        return torch.where(
+            count_observed > 0,
+            empirical_mean,
+            torch.zeros_like(empirical_mean),
+        )
 
-        return empirical_mean
+    def fill_locf(
+        self,
+        x: torch.Tensor,
+        missing_mask: torch.Tensor,
+        empirical_mean: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Causally carry the last observed value forward.
 
-    def fill_locf(self, x: torch.Tensor, missing_mask: torch.Tensor) -> torch.Tensor:
-        # Ensure x is of shape [batch_size, n_steps, n_features]
+        The previous implementation selected one final index per feature and
+        reused it at every time point, which leaked later observations into
+        earlier missing positions.  Positions before the first observation use
+        the sample empirical mean (or zero when it is unavailable).
+        """
         batch_size, n_steps, n_features = x.shape
-        
-        # Create a tensor to store the indices of the last observed values
-        last_observed_indices = torch.zeros((batch_size, n_features), dtype=torch.long, device=x.device)
-        
-        # Create a mask for valid (non-missing) values
-        valid_mask = ~missing_mask.bool()
-        
-        # Use torch.arange to create a tensor of indices
-        indices = torch.arange(n_steps, device=x.device).unsqueeze(0).unsqueeze(-1).expand(batch_size, -1, n_features)
-        
-        # Update last_observed_indices with the most recent valid index for each feature
-        last_observed_indices = torch.where(valid_mask, indices, last_observed_indices.unsqueeze(1))
-        last_observed_indices, _ = torch.max(last_observed_indices, dim=1)
-        
-        # Create a tensor of the last observed values
-        last_observed_values = x[torch.arange(batch_size).unsqueeze(1), last_observed_indices, torch.arange(n_features)]
-        
-        # Fill missing values with the last observed values
-        return torch.where(missing_mask.bool(), last_observed_values.unsqueeze(1), x)
+        observed_mask = missing_mask.bool()
+        indices = torch.arange(n_steps, device=x.device).view(1, -1, 1)
+        indices = indices.expand(batch_size, -1, n_features)
+        last_observed_indices = torch.where(
+            observed_mask,
+            indices,
+            torch.full_like(indices, -1),
+        ).cummax(dim=1).values
+
+        carried = x.gather(1, last_observed_indices.clamp_min(0))
+        if empirical_mean is None:
+            empirical_mean = torch.zeros(
+                batch_size, n_features, device=x.device, dtype=x.dtype
+            )
+        fallback = empirical_mean.unsqueeze(1).expand_as(x)
+        return torch.where(last_observed_indices >= 0, carried, fallback)
 
     def forward(
         self, 
@@ -155,17 +158,19 @@ class Model(nn.Module):
             x_padding = torch.zeros_like(y, device=x.device)
             X = torch.cat([x, x_padding], dim=1)
             missing_mask = torch.cat([x_mask, x_padding], dim=1)
-            deltas = self.convert_to_delta(torch.cat([x_mark, y_mark], dim=1))
             empirical_mean = self.calculate_empirical_mean(X, missing_mask)
-            X_filledLOCF = self.fill_locf(X, missing_mask)
+            deltas = self.convert_to_delta(
+                torch.cat([x_mark, y_mark], dim=1), missing_mask
+            )
+            X_filledLOCF = self.fill_locf(X, missing_mask, empirical_mean)
             # print(f"{X_filledLOCF[0]=}")
             # input()
         elif self.configs.task_name in ["imputation", "classification"]:
             X = x
             missing_mask = x_mask
-            deltas = self.convert_to_delta(x_mark)
             empirical_mean = self.calculate_empirical_mean(x, x_mask)
-            X_filledLOCF = self.fill_locf(x, x_mask)
+            deltas = self.convert_to_delta(x_mark, x_mask)
+            X_filledLOCF = self.fill_locf(x, x_mask, empirical_mean)
         else:
             raise NotImplementedError(f"{self.configs.task_name} not implemented for GRU_D")
         # END adaptor

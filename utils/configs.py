@@ -132,6 +132,18 @@ def get_configs(args=None) -> ExpConfigs:
     parser.add_argument('--cru_bandwidth', type=int, default=3, help="Bandwidth for basis matrices A_k. b in paper")
     parser.add_argument('--cru_num_basis', type=int, default=15, help="Number of basis matrices to use in transition model for locally-linear transitions. K in paper")
     parser.add_argument('--cru_ts', type=float, default=1.0, help="Scaling factor of timestamps for numerical stability.")
+    # DTAMI family
+    parser.add_argument('--dtami_beta', type=float, default=0.5, help="Parseval regularization/update strength for DTAMI-C's learned basis. 0.5 gives the stable Newton--Schulz orthogonalization update.")
+    parser.add_argument('--dtami_h_ablation', type=str, choices=['full', 'only_local', 'only_left', 'only_right', 'no_local', 'no_left', 'no_right'], default='only_left', help="Hidden-state decomposition used by DTAMI models. only_left is the causal forecasting setting.")
+    parser.add_argument('--dtami_hidden_units', type=int, default=64, help="Even hidden-state size used by DTAMI-C and DTAMI-CIRC.")
+    parser.add_argument('--dtami_init_f_max', type=float, default=6.0, help="Upper frequency bound (cycles per time unit) for DTAMI complex-eigenvalue initializers.")
+    parser.add_argument('--dtami_init_f_min', type=float, default=0.5, help="Lower frequency bound (cycles per time unit) for DTAMI complex-eigenvalue initializers.")
+    parser.add_argument('--dtami_init_r_max', type=float, default=1.0, help="Upper radius bound for DTAMI annulus initializers.")
+    parser.add_argument('--dtami_init_r_min', type=float, default=0.9, help="Lower radius bound for DTAMI annulus initializers.")
+    parser.add_argument('--dtami_init_r_value', type=float, default=1.0, help="Radius used by DTAMI's fixed-value initializer.")
+    parser.add_argument('--dtami_init_theta_value', type=float, default=6.283185307179586, help="Angular frequency used by DTAMI's fixed-value initializer.")
+    parser.add_argument('--dtami_initializer_type', type=str, choices=['fixed-value', 'uniform', 'glorot-based', 'frequency-uniform', 'frequency-log-uniform'], default='uniform', help="Eigenvalue initializer used by DTAMI-C and DTAMI-CIRC.")
+    parser.add_argument('--dtami_n_traverse', type=int, default=1, help="Number of DTAMI refinement traversals.")
     # Informer
     parser.add_argument('--informer_distil', type=int, default=1, help='whether to use distilling in encoder, using this argument means not using distilling')
     # Latent ODE
@@ -215,4 +227,3 @@ def get_configs(args=None) -> ExpConfigs:
                 yaml.dump(asdict(configs), f, default_flow_style=False)
                 
     return configs
-

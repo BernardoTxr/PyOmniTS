@@ -317,6 +317,13 @@ class Exp_Main(Exp_Basic):
                         if self.configs.task_name == "classification":
                             clip_grad_norm_(model_train.parameters(), max_norm=4.0)
                         model_optim.step()
+                        # Some models maintain constrained parameters outside
+                        # the optimizer update. DTAMI-C uses this hook for the
+                        # Parseval orthogonality step from its source model.
+                        unwrapped_model = accelerator.unwrap_model(model_train)
+                        post_step = getattr(unwrapped_model, "post_step", None)
+                        if callable(post_step):
+                            post_step()
 
                 if if_nan_loss:
                     accelerator.set_trigger()

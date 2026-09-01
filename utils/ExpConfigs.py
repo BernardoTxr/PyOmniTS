@@ -169,6 +169,19 @@ class ExpConfigs:
     # tPatchGNN
     tpatchgnn_te_dim: int
 
+    # DTAMI family. Defaults preserve compatibility with older saved configs.
+    dtami_beta: float = 0.5
+    dtami_h_ablation: str = "only_left"
+    dtami_hidden_units: int = field(default=64, metadata={"sweep": [32, 64, 128, 256]})
+    dtami_init_f_max: float = 6.0
+    dtami_init_f_min: float = 0.5
+    dtami_init_r_max: float = 1.0
+    dtami_init_r_min: float = 0.9
+    dtami_init_r_value: float = 1.0
+    dtami_init_theta_value: float = 6.283185307179586
+    dtami_initializer_type: str = "uniform"
+    dtami_n_traverse: int = field(default=1, metadata={"sweep": [1, 2, 3]})
+
     # Used to be compatible with ipython. Never used
     f: int = 1
 
