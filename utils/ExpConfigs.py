@@ -182,6 +182,19 @@ class ExpConfigs:
     dtami_initializer_type: str = "uniform"
     dtami_n_traverse: int = field(default=1, metadata={"sweep": [1, 2, 3]})
 
+    # GRU-ODE-Bayes. Defaults preserve compatibility with older saved configs.
+    gru_ode_bayes_mixing: float = field(default=1e-4, metadata={"sweep": [1e-5, 1e-4, 1e-3]})
+    gru_ode_bayes_p_hidden: int = field(default=25, metadata={"sweep": [25, 50, 100]})
+    gru_ode_bayes_prep_hidden: int = field(default=10, metadata={"sweep": [10, 25, 50]})
+    gru_ode_bayes_solver: str = "euler"
+    gru_ode_bayes_step_size: float = field(default=0.05, metadata={"sweep": [0.025, 0.05, 0.1]})
+
+    # Neural CDE. Defaults preserve compatibility with older saved configs.
+    neural_cde_adjoint: int = 0
+    neural_cde_hidden_layers: int = field(default=1, metadata={"sweep": [1, 2, 3]})
+    neural_cde_hidden_width: int = field(default=128, metadata={"sweep": [32, 64, 128]})
+    neural_cde_solver: str = "rk4"
+
     # Used to be compatible with ipython. Never used
     f: int = 1
 

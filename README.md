@@ -53,9 +53,12 @@ Using 🦞agent? Check out our official [PyOmniTS skill on clawhub](https://claw
 
 ## 3. 🤖 Models
 
-53 models, covering regular, irregular, pretrained, and traffic models, have been included in PyOmniTS, and more are coming.
+55 models, covering regular, irregular, pretrained, and traffic models, have been included in PyOmniTS, and more are coming.
 
 Model classes can be found in `models/`, and their dependencies can be found in `layers/`
+
+The DTAMI Phase 2 baseline inventory and verification notes are in
+[`docs/phase2_models.md`](docs/phase2_models.md).
 
 - ✅: supported
 - ❌: not supported
@@ -82,6 +85,7 @@ Model classes can be found in `models/`, and their dependencies can be found in 
 |[GNeuralFlow](https://openreview.net/forum?id=tFB5SsabVb)|NeurIPS 2024|IMTS|✅|❌|✅|[v1.0.0+](https://github.com/Ladbaby/PyOmniTS/releases/tag/v1.0.0)|
 |[GraFITi](https://ojs.aaai.org/index.php/AAAI/article/view/29560)|AAAI 2024|IMTS|✅|✅|✅|[v1.0.0+](https://github.com/Ladbaby/PyOmniTS/releases/tag/v1.0.0)|
 |[GRU-D](https://www.nature.com/articles/s41598-018-24271-9)|Scientific Reports 2018|IMTS|✅|✅|✅|[v1.0.0+](https://github.com/Ladbaby/PyOmniTS/releases/tag/v1.0.0)|
+|[GRU-ODE-Bayes](https://arxiv.org/abs/1905.12374)|NeurIPS 2019|IMTS|✅|✅|✅|local|
 |[HD-TTS](https://proceedings.mlr.press/v235/marisca24a.html)|ICML 2024|IMTS|✅|-|✅|[v2.0.0+](https://github.com/Ladbaby/PyOmniTS/releases/tag/v2.0.0)|
 |[Hi-Patch](https://openreview.net/forum?id=nBgQ66iEUu)|ICML 2025|IMTS|✅|✅|✅|[v1.0.0+](https://github.com/Ladbaby/PyOmniTS/releases/tag/v1.0.0)|
 |[higp](https://proceedings.mlr.press/v235/cini24a.html)|ICML 2024|MTS|✅|✅|✅|[v1.0.0+](https://github.com/Ladbaby/PyOmniTS/releases/tag/v1.0.0)|
@@ -96,6 +100,7 @@ Model classes can be found in `models/`, and their dependencies can be found in 
 |[MICN](https://openreview.net/pdf?id=zt53IDUR1U)|ICLR 2023|MTS|✅|✅|✅|[v1.0.0+](https://github.com/Ladbaby/PyOmniTS/releases/tag/v1.0.0)|
 |[MOIRAI](https://proceedings.mlr.press/v235/woo24a.html)|ICML 2024|Any|✅|-|✅|[v1.0.0+](https://github.com/Ladbaby/PyOmniTS/releases/tag/v1.0.0)|
 |[mTAN](https://openreview.net/forum?id=4c0J6lwQ4_)|ICLR 2021|IMTS|✅|✅|✅|[v1.0.0+](https://github.com/Ladbaby/PyOmniTS/releases/tag/v1.0.0)|
+|[Neural CDE](https://papers.neurips.cc/paper/2020/hash/4a5876b450b45371f6cfe5047ac8cd45-Abstract.html)|NeurIPS 2020|IMTS|✅|✅|✅|local|
 |[NeuralFlows](https://proceedings.neurips.cc/paper/2021/hash/b21f9f98829dea9a48fd8aaddc1f159d-Abstract.html)|NeurIPS 2021|IMTS|✅|❌|✅|[v1.0.0+](https://github.com/Ladbaby/PyOmniTS/releases/tag/v1.0.0)|
 |[NHITS](https://ojs.aaai.org/index.php/AAAI/article/view/25854)|AAAI 2023|MTS|✅|-|✅|[v2.0.0+](https://github.com/Ladbaby/PyOmniTS/releases/tag/v2.0.0)|
 |[Nonstationary Transformer](https://openreview.net/pdf?id=ucNDIDRNjjv)|NeurIPS 2022|MTS|✅|✅|✅|[v1.0.0+](https://github.com/Ladbaby/PyOmniTS/releases/tag/v1.0.0)|
@@ -211,4 +216,3 @@ We encountered the following problems when using existing ones:
 - [Time Series Library](https://github.com/thuml/Time-Series-Library): Models and datasets for regularly sampled time series are mostly adapted from it.
 - [BasicTS](https://github.com/GestaltCogTeam/BasicTS): Documentation design reference.
 - [Google Gemini](https://gemini.google.com/): Icon creation.
-

@@ -18,6 +18,7 @@ for dataset_name in "P12" "MIMIC_III" "MIMIC_IV" "USHCN" "HumanActivity"; do
     # sh scripts/GNeuralFlow/$dataset_name.sh
     # sh scripts/GraFITi/$dataset_name.sh
     # sh scripts/GRU_D/$dataset_name.sh
+    # sh scripts/GRU_ODE_Bayes/$dataset_name.sh
     # sh scripts/Hi-Patch/$dataset_name.sh
     # sh scripts/higp/$dataset_name.sh
     # sh scripts/HyperIMTS/$dataset_name.sh
@@ -31,6 +32,7 @@ for dataset_name in "P12" "MIMIC_III" "MIMIC_IV" "USHCN" "HumanActivity"; do
     # sh scripts/MICN/$dataset_name.sh
     # sh scripts/MOIRAI/$dataset_name.sh
     # sh scripts/mTAN/$dataset_name.sh
+    # sh scripts/Neural_CDE/$dataset_name.sh
     # sh scripts/NeuralFlows/$dataset_name.sh
     # sh scripts/Nonstationary_Transformer/$dataset_name.sh
     # sh scripts/PatchTST/$dataset_name.sh;

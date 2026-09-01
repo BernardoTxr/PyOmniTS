@@ -132,6 +132,12 @@ def get_configs(args=None) -> ExpConfigs:
     parser.add_argument('--cru_bandwidth', type=int, default=3, help="Bandwidth for basis matrices A_k. b in paper")
     parser.add_argument('--cru_num_basis', type=int, default=15, help="Number of basis matrices to use in transition model for locally-linear transitions. K in paper")
     parser.add_argument('--cru_ts', type=float, default=1.0, help="Scaling factor of timestamps for numerical stability.")
+    # GRU-ODE-Bayes
+    parser.add_argument('--gru_ode_bayes_mixing', type=float, default=1e-4, help="Weight of the post-update KL term in the GRU-ODE-Bayes objective.")
+    parser.add_argument('--gru_ode_bayes_p_hidden', type=int, default=25, help="Hidden width of the GRU-ODE-Bayes Gaussian observation model.")
+    parser.add_argument('--gru_ode_bayes_prep_hidden', type=int, default=10, help="Per-variable hidden width of the GRU-Bayes observation preparation network.")
+    parser.add_argument('--gru_ode_bayes_solver', type=str, choices=['euler', 'midpoint'], default='euler', help="Fixed-step solver used between GRU-Bayes observation updates.")
+    parser.add_argument('--gru_ode_bayes_step_size', type=float, default=0.05, help="Maximum normalized integration step used by GRU-ODE-Bayes.")
     # DTAMI family
     parser.add_argument('--dtami_beta', type=float, default=0.5, help="Parseval regularization/update strength for DTAMI-C's learned basis. 0.5 gives the stable Newton--Schulz orthogonalization update.")
     parser.add_argument('--dtami_h_ablation', type=str, choices=['full', 'only_local', 'only_left', 'only_right', 'no_local', 'no_left', 'no_right'], default='only_left', help="Hidden-state decomposition used by DTAMI models. only_left is the causal forecasting setting.")
@@ -161,6 +167,11 @@ def get_configs(args=None) -> ExpConfigs:
     # mTAN
     parser.add_argument('--mtan_alpha', type=float, default=100., help='In classification task, loss is calculated as recon_loss + self.alpha * ce_loss')
     parser.add_argument('--mtan_num_ref_points', type=int, default=8, help='number of reference points, originally chosen in [8, 16, 32, 64, 128]')
+    # Neural CDE
+    parser.add_argument('--neural_cde_adjoint', type=int, default=0, help='Use adjoint backpropagation for Neural CDE; 0 is faster for short sequences, 1 uses less memory.')
+    parser.add_argument('--neural_cde_hidden_layers', type=int, default=1, help='Number of hidden layers in the Neural CDE vector field.')
+    parser.add_argument('--neural_cde_hidden_width', type=int, default=128, help='Width of hidden layers in the Neural CDE vector field.')
+    parser.add_argument('--neural_cde_solver', type=str, choices=['euler', 'rk4', 'dopri5'], default='rk4', help='ODE solver used by Neural CDE.')
     # NeuralFlows
     parser.add_argument('--neuralflows_flow_layers', type=int, default=1, help='Number of flow layers')
     parser.add_argument('--neuralflows_flow_model', type=str, default='coupling', help='Type of NeuralFlows model', choices=['coupling', 'resnet', 'gru'])
