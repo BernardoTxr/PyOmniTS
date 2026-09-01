@@ -195,6 +195,11 @@ class ExpConfigs:
     neural_cde_hidden_width: int = field(default=128, metadata={"sweep": [32, 64, 128]})
     neural_cde_solver: str = "rk4"
 
+    # Phase 2 run-metric collection. Defaults preserve older saved configs.
+    save_run_metrics: int = 1
+    experiment_tag: str = ""
+    missing_mechanism: str = "auto"
+
     # Used to be compatible with ipython. Never used
     f: int = 1
 

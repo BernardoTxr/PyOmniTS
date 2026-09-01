@@ -58,6 +58,7 @@ class Model(nn.Module):
         exp_stage: str = "train", 
         **kwargs
     ):
+        self._reset_nfe()
         # BEGIN adaptor
         BATCH_SIZE, SEQ_LEN, ENC_IN = x.shape
         Y_LEN = self.pred_len
@@ -102,6 +103,22 @@ class Model(nn.Module):
             }
         else:
             raise NotImplementedError()
+
+    def _ode_functions(self):
+        functions = [self.model.diffeq_solver.ode_func]
+        encoder_solver = getattr(self.model.encoder_z0, "z0_diffeq_solver", None)
+        if encoder_solver is not None:
+            functions.append(encoder_solver.ode_func)
+        return functions
+
+    def _reset_nfe(self) -> None:
+        for function in self._ode_functions():
+            function.nfe = 0
+
+    @property
+    def nfe(self) -> int:
+        """Number of vector-field evaluations in the latest forward pass."""
+        return sum(function.nfe for function in self._ode_functions())
 
     def create_LatentODE_model(
         self, 

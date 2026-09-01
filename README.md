@@ -58,7 +58,9 @@ Using 🦞agent? Check out our official [PyOmniTS skill on clawhub](https://claw
 Model classes can be found in `models/`, and their dependencies can be found in `layers/`
 
 The DTAMI Phase 2 baseline inventory and verification notes are in
-[`docs/phase2_models.md`](docs/phase2_models.md).
+[`docs/phase2_models.md`](docs/phase2_models.md). Automatic run metrics and
+publication-ready comparison figures are documented in
+[`docs/phase2_analysis.md`](docs/phase2_analysis.md).
 
 - ✅: supported
 - ❌: not supported

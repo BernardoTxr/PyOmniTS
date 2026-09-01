@@ -22,6 +22,7 @@ class ODEFunc(nn.Module):
 
         self.input_dim = input_dim
         self.device = device
+        self.nfe = 0
 
         utils.init_network_weights(ode_func_net)
         self.gradient_net = ode_func_net
@@ -33,6 +34,7 @@ class ODEFunc(nn.Module):
         t_local: current time point
         y: value at the current time point
         """
+        self.nfe += 1
         grad = self.get_ode_gradient_nn(t_local, y)
         if backwards:
             grad = -grad
@@ -110,7 +112,6 @@ class ODEFunc_w_Poisson(ODEFunc):
 
         log_lam = log_lam - torch.log(self.const_for_lambda.to(y.device))
         return torch.cat((dydt_dldt, torch.exp(log_lam)),-1)
-
 
 
 

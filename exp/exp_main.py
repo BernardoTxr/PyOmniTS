@@ -29,6 +29,7 @@ from utils.metrics import (
     metric,
     metric_classification,
 )
+from utils.run_metrics import RunMetricsTracker, evaluation_tracker
 from utils.tools import (
     EarlyStopping,
     test_gpu_memory,
@@ -250,13 +251,18 @@ class Exp_Main(Exp_Basic):
         if not self.configs.use_multi_gpu:
             model_train = model_train.to(self.device)
 
+        run_metrics = RunMetricsTracker(self.configs, path / "run_metrics.json")
+        run_metrics.begin_training(model_train, self.device)
+
         if_nan_loss = False # break nested loop without using for...else...
         for train_stage in range(1, self.configs.n_train_stages + 1):
             early_stopping = EarlyStopping(patience=self.configs.patience, verbose=True)
             logger.info(f"Train stage {train_stage}/{self.configs.n_train_stages} starts.")
             for epoch in tqdm(range(self.configs.train_epochs), desc="Epochs"):
                 train_loss = []
+                completed_iterations = 0
                 model_train.train()
+                epoch_started_at = run_metrics.begin_train_epoch()
                 with tqdm(total=len(train_loader), leave=False, desc="Training") as it:
                     batch: dict[str, Tensor] # type hints
                     for i, batch in enumerate(train_loader):
@@ -324,6 +330,15 @@ class Exp_Main(Exp_Basic):
                         post_step = getattr(unwrapped_model, "post_step", None)
                         if callable(post_step):
                             post_step()
+                        completed_iterations += 1
+                        run_metrics.observe_train_forward(model_train)
+
+                run_metrics.end_train_epoch(
+                    started_at=epoch_started_at,
+                    iterations=completed_iterations,
+                    epoch=epoch,
+                    train_stage=train_stage,
+                )
 
                 if if_nan_loss:
                     accelerator.set_trigger()
@@ -368,6 +383,8 @@ class Exp_Main(Exp_Basic):
             # Reset optimizer, scheduler
             model_optim.load_state_dict(initial_optimizer_state)
             lr_scheduler.load_state_dict(initial_scheduler_state)
+
+        run_metrics.finish_training(model_train)
 
 
     def test(self) -> None:
@@ -519,6 +536,13 @@ class Exp_Main(Exp_Basic):
             folder_path.mkdir(exist_ok=True)
             logger.info(f"Testing results will be saved under {folder_path}")
 
+            run_metrics = evaluation_tracker(
+                configs=self.configs,
+                run_directory=checkpoint_location_itr,
+                evaluation_directory=folder_path,
+            )
+            run_metrics.begin_evaluation(model_test, self.device)
+
             # dictionary holding input and output data
             array_dict: dict[str, list[np.ndarray] | np.ndarray] = {}
             if self.configs.task_name in ["short_term_forecast", "long_term_forecast", "imputation"]:
@@ -569,9 +593,15 @@ class Exp_Main(Exp_Basic):
                     if not self.configs.use_multi_gpu:
                         batch = {k: v.to(self.device) for k, v in batch.items()}
 
+                    inference_started_at = run_metrics.begin_inference_batch()
                     outputs: dict[str, Tensor] = model_test(
                         **batch,
                         exp_stage="test"
+                    )
+                    run_metrics.end_inference_batch(
+                        started_at=inference_started_at,
+                        model=model_test,
+                        batch_size=batch[next(iter(batch))].shape[0],
                     )
 
                     # check model's outputs only in the first iteration
@@ -640,6 +670,8 @@ class Exp_Main(Exp_Basic):
                 logger.info("Metrics:\n%s", json.dumps(metrics, indent=4)) # log result in a readable way
                 with open(folder_path / "metric.json", "w") as f:
                     json.dump(metrics, f, indent=2)
+
+            run_metrics.finish_evaluation(metrics)
 
             if self.configs.save_arrays:
                 for tensor_name in input_tensor_names:

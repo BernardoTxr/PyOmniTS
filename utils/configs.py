@@ -93,6 +93,9 @@ def get_configs(args=None) -> ExpConfigs:
     parser.add_argument('--test_flop', type=int, default=0, help='Test model flops. See utils/tools for implementation details.')
     parser.add_argument('--test_gpu_memory', type=int, default=0, help="Test model's gpu memory usage. See utils/tools for implementation details.")
     parser.add_argument('--test_train_time', type=int, default=0, help="Test model's training time. See utils/tools for implementation details.")
+    parser.add_argument('--save_run_metrics', type=int, default=1, help="Save one structured Phase 2 metric record per normal training/evaluation run.")
+    parser.add_argument('--experiment_tag', type=str, default='', help="Optional experiment-group label stored in run_metrics.json and available to analysis scripts.")
+    parser.add_argument('--missing_mechanism', type=str, choices=['auto', 'native', 'random', 'timestamp_jitter', 'block_gap', 'asynchronous_channels'], default='auto', help="Missingness scenario metadata stored with each run. auto resolves to random when missing_rate > 0 and native otherwise.")
 
     # model configs
     # common

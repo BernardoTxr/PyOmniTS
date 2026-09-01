@@ -71,6 +71,7 @@ esac
 
 $launch_command main.py \
     --is_training 1 \
+    --experiment_tag "phase2" \
     --collate_fn "collate_fn" \
     --loss "$loss_name" \
     --d_model "$d_model" \
@@ -93,4 +94,3 @@ $launch_command main.py \
     --itr 5 \
     --batch_size "$batch_size" \
     --learning_rate 1e-3
-
