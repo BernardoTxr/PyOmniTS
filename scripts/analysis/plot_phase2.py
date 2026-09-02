@@ -12,6 +12,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import numpy as np
 
 try:
@@ -65,15 +66,20 @@ def _display_model(model_name: str, model_id: str | None = None) -> str:
     names = {
         "DTAMI_C": "DTAMI-C",
         "DTAMI_CIRC": "DTAMI-CIRC",
+        "GRU_D": "GRU-D",
         "GRU_ODE_Bayes": "GRU-ODE-Bayes",
         "Neural_CDE": "Neural CDE",
         "Latent_ODE": "Latent ODE",
         "GNeuralFlow": "GNeuralFlow",
         "GraFITi": "GraFITi",
+        "HyperIMTS": "HyperIMTS",
+        "tPatchGNN": "tPatchGNN",
+        "Warpformer": "Warpformer",
         "mTAN": "mTAN",
     }
     display = names.get(model_name, model_name.replace("_", " "))
-    if model_id and model_id != model_name:
+    # Campaign IDs carry provenance but should not clutter figure labels.
+    if model_id and model_id != model_name and not model_id.endswith(model_name):
         display += f" ({model_id})"
     return display
 
@@ -89,14 +95,14 @@ def _palette(rows: list[dict[str, Any]]) -> dict[str, str]:
 
 def _condition_title(condition: tuple[Any, ...]) -> str:
     dataset, seq_len, pred_len, mechanism, missing_rate = condition
-    return f"{dataset}\nL={seq_len}, H={pred_len} | {mechanism}, q={float(missing_rate or 0):g}"
+    return f"{dataset} | L={seq_len}, H={pred_len} | {mechanism}, q={float(missing_rate or 0):g}"
 
 
 def _efficiency_title(condition: tuple[Any, ...]) -> str:
     title = _condition_title(condition[:len(CONDITION_FIELDS)])
     batch_size, hostname, gpu_name = condition[len(CONDITION_FIELDS):]
     hardware = gpu_name or hostname or "unknown hardware"
-    return f"{title}\nbatch={batch_size} | {hardware}"
+    return f"{title} | batch={batch_size}\n{hardware}"
 
 
 def _panels(
@@ -117,10 +123,11 @@ def _panels(
     return comparable[:max_panels]
 
 
-def _axes(count: int):
+def _axes(count: int, single_size: tuple[float, float] | None = None):
     columns = 1 if count == 1 else (2 if count <= 4 else 3)
     rows = math.ceil(count / columns)
-    figure, axes = plt.subplots(rows, columns, figsize=(3.5 * columns, 3.05 * rows), squeeze=False)
+    figure_size = single_size if count == 1 and single_size else (3.5 * columns, 3.05 * rows)
+    figure, axes = plt.subplots(rows, columns, figsize=figure_size, squeeze=False)
     flat = list(axes.flat)
     for axis in flat[count:]:
         axis.set_visible(False)
@@ -149,7 +156,7 @@ def plot_quality(
     if not panels:
         return []
     colors = _palette(rows)
-    figure, axes = _axes(len(panels))
+    figure, axes = _axes(len(panels), (5.3, 3.6))
     for axis, (condition, panel_rows) in zip(axes, panels):
         aggregated = _aggregate_panel(panel_rows, metric)
         aggregated.sort(key=lambda row: row.get(f"{metric}_mean", float("inf")))
@@ -193,7 +200,7 @@ def plot_tradeoff(
         if row.get("gpu_memory_gib") is not None and row["gpu_memory_gib"] > 0
     ], dtype=float)
     maximum_memory = float(np.max(all_memories)) if all_memories.size else None
-    figure, axes = _axes(len(panels))
+    figure, axes = _axes(len(panels), (5.3, 3.6))
     for axis, (condition, panel_rows) in zip(axes, panels):
         aggregated = aggregate_rows(panel_rows, ("model_name", "model_id"))
         aggregated = [row for row in aggregated if f"{x_field}_mean" in row and f"{metric}_mean" in row]
@@ -201,23 +208,17 @@ def plot_tradeoff(
         y_values = [row[f"{metric}_mean"] for row in aggregated]
         memories = [row.get("gpu_memory_gib_mean") for row in aggregated]
         sizes = _bubble_sizes(memories, maximum_memory)
-        offsets = ((5, 7), (5, -22), (-5, 7), (-5, -22), (8, 18), (-8, 18))
         for index, row in enumerate(aggregated):
             model = _model_label(row)
             axis.scatter(x_values[index], y_values[index], s=sizes[index],
                          color=colors[model], alpha=0.82, edgecolor="white", linewidth=0.8)
-            detail = model
-            if memories[index] is not None:
-                detail += f"\n{memories[index]:.2f} GiB"
-            x_offset, y_offset = offsets[index % len(offsets)]
-            axis.annotate(detail, (x_values[index], y_values[index]), xytext=(x_offset, y_offset),
-                          textcoords="offset points", color=colors[model], fontsize=7,
-                          fontweight="bold", ha="left" if x_offset > 0 else "right",
-                          va="bottom" if y_offset > 0 else "top", clip_on=False)
         positive_x = [value for value in x_values if value > 0]
         if positive_x and max(positive_x) / min(positive_x) >= 20:
             axis.set_xscale("log")
-        axis.margins(x=0.12, y=0.32)
+            axis.xaxis.set_major_locator(mticker.LogLocator(base=10, subs=(1.0, 2.0, 5.0), numticks=7))
+            axis.xaxis.set_major_formatter(mticker.FuncFormatter(lambda value, _: f"{value:g}"))
+            axis.xaxis.set_minor_formatter(mticker.NullFormatter())
+        axis.margins(x=0.12, y=0.18)
         axis.set_xlabel(x_label)
         axis.set_ylabel(metric)
         axis.set_title(_efficiency_title(condition), fontsize=8)
@@ -231,9 +232,16 @@ def plot_tradeoff(
         axes[0].legend(handles, [f"{memory:.2f} GiB" for memory in reference_memories],
                        title="Peak GPU memory", frameon=True, framealpha=0.92,
                        edgecolor="#CCCCCC", loc="best")
-    figure.suptitle(f"Accuracy–efficiency trade-off (bubble area: peak GPU memory)",
-                    y=1.01, fontsize=12, fontweight="bold")
-    figure.tight_layout()
+    model_names = sorted(colors)
+    model_handles = [
+        axes[0].scatter([], [], s=48, color=colors[model], alpha=0.82,
+                        edgecolor="white", linewidth=0.8)
+        for model in model_names
+    ]
+    figure.legend(model_handles, model_names, loc="lower center", ncol=min(4, len(model_names)),
+                  bbox_to_anchor=(0.5, -0.03), frameon=False, columnspacing=1.1, handletextpad=0.35)
+    figure.suptitle("Accuracy–efficiency trade-off", y=0.995, fontsize=11, fontweight="bold")
+    figure.tight_layout(rect=(0, 0.12, 1, 0.95))
     return _save(figure, output_dir, stem, formats)
 
 
@@ -329,6 +337,10 @@ def build_charts(rows: list[dict[str, Any]], args) -> dict[str, Any]:
     generated["training_tradeoff"] = plot_tradeoff(
         rows, args.metric, "train_iteration_ms", "Training time (ms / iteration)",
         "tradeoff_training_time", output_dir, args.formats, args.max_panels,
+    )
+    generated["inference_tradeoff"] = plot_tradeoff(
+        rows, args.metric, "inference_sample_ms", "Inference time (ms / sample)",
+        "tradeoff_inference_time", output_dir, args.formats, args.max_panels,
     )
     generated["nfe_tradeoff"] = plot_tradeoff(
         rows, args.metric, "time_per_nfe_ms", "Time (ms / NFE)",

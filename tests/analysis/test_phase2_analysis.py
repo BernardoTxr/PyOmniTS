@@ -7,6 +7,7 @@ from pathlib import Path
 
 from scripts.analysis.phase2_results import load_run_rows
 from scripts.analysis.plot_phase2 import main
+from scripts.analysis.table_phase2 import main as table_main
 
 
 def _write_record(
@@ -57,6 +58,7 @@ def _write_record(
         "evaluation": {
             "metrics": {"MSE": mse, "MAE": mse ** 0.5},
             "steady_state_batch_time_ms": {"mean": 4.0 if model == "DTAMI_C" else 6.0},
+            "steady_state_sample_time_ms": 1.0 if model == "DTAMI_C" else 1.5,
             "nfe_per_batch": {"mean": 4.0},
             "steady_state_time_per_nfe_ms": 1.0 if model == "DTAMI_C" else 1.5,
             "peak_gpu_memory": {"allocated_gib": 0.3},
@@ -96,6 +98,7 @@ class TestPhase2Analysis(unittest.TestCase):
             expected = (
                 "quality_mse.png",
                 "tradeoff_training_time.png",
+                "tradeoff_inference_time.png",
                 "tradeoff_time_per_nfe.png",
                 "tradeoff_parameters.png",
                 "sensitivity_missingness.png",
@@ -107,6 +110,19 @@ class TestPhase2Analysis(unittest.TestCase):
             for name in expected:
                 self.assertTrue((output / name).exists(), name)
                 self.assertGreater((output / name).stat().st_size, 0)
+
+            table_output = root / "tables"
+            result = table_main([
+                "--results-root", str(results),
+                "--metrics-root", str(root / "no-legacy-metrics"),
+                "--output-dir", str(table_output),
+                "--dataset", "Tiny",
+                "--experiment-tag", "phase2-test",
+            ])
+            self.assertEqual(result, 0)
+            for name in ("performance_table.csv", "performance_table.md", "performance_table.tex"):
+                self.assertTrue((table_output / name).exists(), name)
+                self.assertGreater((table_output / name).stat().st_size, 0)
 
 
 if __name__ == "__main__":

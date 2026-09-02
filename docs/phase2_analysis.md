@@ -44,6 +44,7 @@ The command writes tidy per-run and aggregated CSV files, a JSON manifest, and
 
 - model MSE with 95% confidence intervals;
 - MSE versus training time per iteration (GPU-memory bubble area);
+- MSE versus steady-state inference time per sample (GPU-memory bubble area);
 - MSE versus time per NFE;
 - MSE versus trainable parameter count;
 - robustness versus missing rate;
